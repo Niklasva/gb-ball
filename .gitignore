@@ -1,3 +1,4 @@
 gbdk/
 obj/
 *DS_STORE
+*.gb
