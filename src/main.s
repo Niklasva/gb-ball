@@ -13,9 +13,9 @@
 .area	_BSS
 
 TOP_EDGE 		= 15
-BOTTOM_EDGE	= 155
+BOTTOM_EDGE		= 155
 LEFT_EDGE		= 10
-RIGHT_EDGE	= 165
+RIGHT_EDGE		= 165
 
 .sframe:
 .ds	0x01
@@ -159,11 +159,11 @@ _main::
 
 .ball_collision:
 	LD	A, (.ball_position_y)
-	CP	#BOTTOM_EDGE			; Om bollen slår i golvet
+	CP	#BOTTOM_EDGE				; Om bollen slår i golvet
 	JP	NC, .change_direction_y	; Studsa
 
 
-	CP	#TOP_EDGE				; Om bollen slår i taket
+	CP	#TOP_EDGE					; Om bollen slår i taket
 	JP	C, .change_direction_y
 
 	LD	A, (.ball_position_x)
