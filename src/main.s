@@ -12,6 +12,11 @@
 .globl	.jpad
 .area	_BSS
 
+TOP_EDGE 		= 15
+BOTTOM_EDGE	= 155
+LEFT_EDGE		= 10
+RIGHT_EDGE	= 165
+
 .sframe:
 .ds	0x01
 .ball_position_x:
@@ -19,9 +24,9 @@
 .ball_position_y:
 .ds	0x02
 .ball_speed_x:
-.ds	0x02
+.ds	0x03
 .ball_speed_y:
-.ds	0x02
+.ds	0x03
 
 .area	_CODE
 
@@ -72,13 +77,17 @@ _main::
 	XOR	A
 	LD	(.ball_position_y+1), A
 	XOR	A
+
+
+	LD	A, #0x00
 	LD	(.ball_speed_x), A
-	LD	A, #0x40
+	LD	A, #0xFF
 	LD	(.ball_speed_x+1), A
 	XOR	A
 
+	LD	A, #0x00
 	LD	(.ball_speed_y), A
-	LD	A, #0x40
+	LD	A, #0xFF
 	LD	(.ball_speed_y+1), A
 
 	CALL	.tile_sprite
@@ -99,11 +108,20 @@ _main::
 	CALL	.wait_vbl_done
 	CALL	.move_ball
 	;CALL	.jpad
+	;JP .ball_collision
+
+	CALL	.jpad
+	LD	D,A
+
+	AND	#.B		; Is B pressed ?
+	CALL	NZ, .change_direction_y
+
 	JP .update
 	RET
 
 .move_ball:
-	;; Uppdatera bollens position i x
+	CALL .ball_collision
+	;; Update the ball's x position
 	LD	A, (.ball_position_x)	; Hämta bollens nuvarande position
 	LD	H, A					; och lagra den i HL-registret
 	LD	A, (.ball_position_x+1)	;
@@ -133,10 +151,61 @@ _main::
 	LD	(.ball_position_y+1), A
 	LD	A, H
 	LD	(.ball_position_y), A
+
 	CALL	.place_sprite
+
+
 	RET
 
 .ball_collision:
+	LD	A, (.ball_position_y)
+	CP	#BOTTOM_EDGE			; Om bollen slår i golvet
+	JP	NC, .change_direction_y	; Studsa
+
+
+	CP	#TOP_EDGE				; Om bollen slår i taket
+	JP	C, .change_direction_y
+
+	LD	A, (.ball_position_x)
+	CP	#RIGHT_EDGE
+	JP	NC, .change_direction_x
+
+	CP	#LEFT_EDGE
+	JP	C, .change_direction_x
+
+	RET
+
+.change_direction_x:
+	LD	A, (.ball_speed_x)
+	LD	B, A
+	LD	A, #0
+	DEC	A
+	SUB	B
+	LD	(.ball_speed_x), A
+
+	LD	A, (.ball_speed_x+1)
+	LD	B, A
+	LD	A, #0
+	DEC	A
+	SUB	B
+	LD	(.ball_speed_x+1), A
+	RET
+
+.change_direction_y:
+	LD	A, (.ball_speed_y)
+	LD	B, A
+	LD	A, #0
+	DEC	A
+	SUB	B
+	LD	(.ball_speed_y), A
+
+	LD	A, (.ball_speed_y+1)
+	LD	B, A
+	LD	A, #0
+	DEC	A
+	SUB	B
+	LD	(.ball_speed_y+1), A
+	RET
 
 .tile_sprite:
 	LD	A, (.sframe)
