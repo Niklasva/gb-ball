@@ -31,7 +31,8 @@
 	LD	A, H
 	LD	(.ball_position_y), A
 
-	CALL	.place_sprite
+	CALL	.update_ball_sprite_position
+	CALL	.update_pad_sprite_position
 
 	RET
 

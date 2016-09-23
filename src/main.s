@@ -16,20 +16,24 @@
 STARTX = 60
 STARTY = 20
 TOP_EDGE = 17
-BOTTOM_EDGE = 156
+BOTTOM_EDGE = 155
 LEFT_EDGE = 9
 RIGHT_EDGE = 165
 
 .sframe:
-.ds	0x01
+	.ds	0x01
 .ball_position_x:
-.ds	0x02
+	.ds	0x02
 .ball_position_y:
-.ds	0x02
+	.ds	0x02
 .ball_speed_x:
-.ds	0x03
+	.ds	0x03
 .ball_speed_y:
-.ds	0x03
+	.ds	0x03
+.pad_position_x:
+	.ds	0x04
+.pad_position_y:
+	.ds	0x04
 
 .area	_CODE
 
@@ -40,13 +44,12 @@ _main::
 	LDH	(.BGP),  A
 	LDH	(.OBP0),  A
 
-	;; Initialize tiles
 	LD	HL,  #0x8000
 	LD	DE,  #0x1000
 	LD	B,  #0x00
-	CALL	.init_vram	; Init the tile set at 0x8000 with 0x00
+	CALL	.init_vram
 	LD	B,  #0xFF
-	CALL	.init_btt		; Init the tiles tables with 0xFF
+	CALL	.init_btt
 	CALL	.init_wtt
 
 	LD	BC,  #.tp0
@@ -54,20 +57,20 @@ _main::
 	LD	DE,  #.endtp0-.tp0
 	CALL	.copy_vram
 
-	LD	BC,  #.tp1	; Move tiles (ball)
+	LD	BC,  #.tp1
 	LD	HL,  #0x8000
 	LD	DE,  #.endtp1-.tp1
 	CALL	.copy_vram
 
 	;; Init sprite
 	XOR	A
-	LD	(.sframe), A
-	LD	C, #0x00
-	LD	D, #0x00
-	CALL	.set_sprite_prop
-	LD	C, #0x01
-	LD	D, #0x00
-	CALL	.set_sprite_prop
+	CALL .init_ball_sprite
+	CALL .init_pad_sprite
+
+	LD	A, #100
+	LD	(.pad_position_x), A
+	LD	A, #140
+	LD	(.pad_position_y), A
 
 	LD	A, #STARTX
 	LD	(.ball_position_x), A
@@ -91,8 +94,10 @@ _main::
 	LD	A, #0xFF
 	LD	(.ball_speed_y+1), A
 
-	CALL	.tile_sprite
-	CALL	.place_sprite
+	CALL	.init_ball_sprite
+	CALL	.update_ball_sprite_position
+
+
 	LD	A, #0b11100111
           ; LCDC         = On
           ; WindowBank   = 0x9C00
@@ -109,46 +114,83 @@ _main::
 	CALL	.wait_vbl_done
 	CALL	.move_ball
 	CALL	.jpad
+	LD	D,A
 
-	AND	#.B	; B pressed
-	CALL	NZ, .change_direction_y
+	AND	#.LEFT
+	CALL	NZ, .move_pad_left
+
+	LD	A,D
+	AND	#.RIGHT
+	CALL	NZ, .move_pad_right
+
 
 	JP .update
 	RET
 
-.tile_sprite:
-	LD	A, (.sframe)
-	LD	HL, #.ball_tiles
-	RLCA
-	LD	B, #0x00
-	LD	C, A
-	ADD	HL, BC
-	LD	C, #0x00
-	LD	A, (HL+)
-	LD	D, A
-	PUSH	HL
-	CALL	.set_sprite_tile
-	POP	HL
-	LD	C, #0x01
-	LD	A, (HL+)
-	LD	D, A
+;; Ställ in sprite 0x00 <- tile 0x00 (bollens tile)
+.init_ball_sprite:
+	LD	C,#0x00		; Sprite 0x00
+	LD	D,#0x00		; Default sprite properties (ingen flip etc.)
+	CALL	.set_sprite_prop
+	LD	C,#0x00		; Sprite 0x00
+	LD	D,#0x00		; Tile 0x00
 	CALL	.set_sprite_tile
 	RET
 
-.place_sprite:
+;; Ställ in sprite 0x01 <- 0x03 (spelarens tile)
+;; Flippa 0x03 för att göra 0x02
+.init_pad_sprite:
+	LD	C,#0x01		; Sprite 0x01
+	LD	D,#0x00		; Default sprite properties
+	CALL	.set_sprite_prop
+	LD	C,#0x01		; Sprite 0x01
+	LD	D,#0x03		; Tile 0x03
+	CALL	.set_sprite_tile
+
+	LD	C,#0x02		; Sprite 0x02
+	LD	D,#0x20		; Flip X
+	CALL	.set_sprite_prop
+	LD	C,#0x02		; Sprite 0x02
+	LD	D,#0x03		; Tile 0x03
+	CALL	.set_sprite_tile
+	RET
+
+.update_ball_sprite_position:
 	LD	C, #0x00
 	LD	A, (.ball_position_x)
 	LD	D, A
 	LD	A, (.ball_position_y)
 	LD	E, A
-	PUSH	DE
 	CALL	.mv_sprite
+	RET
+
+.update_pad_sprite_position:
 	LD	C, #0x01
-	POP	DE
-	LD	A,  #0x08
-	ADD	A,  D
-	LD	D,  A
-	CALL .mv_sprite
+	LD	A, (.pad_position_x)
+	LD	D, A
+	LD	A, (.pad_position_y)
+	LD	E, A
+	CALL	.mv_sprite
+
+	LD	C, #0x02
+	LD	A, (.pad_position_x)
+	ADD	A, #0x08 ; placera 0x02 8 pixlar till höger om 0x01
+	LD	D, A
+	LD	A, (.pad_position_y)
+	LD	E, A
+	CALL	.mv_sprite
+	RET
+
+.move_pad_left:
+	LD	A, (.pad_position_x)
+	DEC A
+	LD	(.pad_position_x), A
+	RET
+
+.move_pad_right:
+	LD	A, (.pad_position_x)
+	INC A
+	LD	(.pad_position_x), A
 	RET
 
 .area	_LIT
