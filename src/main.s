@@ -96,27 +96,27 @@ _main::
 	CALL	.update_ball_sprite_position
 
 
-	;;
-	;; Initiera en sten.
-	;;
-	;; C = vilken sprite (ex 0x03)
-	;; B = pos x
-	;; E = pos y
-	;;
-	LD	A, #0x3D
-	LD	B, A
-	LD	A, #0x03
-	LD	C, A
-	LD	A, #0xFF
-	LD	D, A
-	LD	A, #0x3D
-	LD	E, A
-
-	PUSH BC
-	PUSH DE
-	CALL	.init_brick
-	POP BC
-	POP DE
+	; ;;
+	; ;; Initiera en sten.
+	; ;;
+	; ;; C = vilken sprite (ex 0x03)
+	; ;; B = pos x
+	; ;; E = pos y
+	; ;;
+	; LD	A, #0x3D
+	; LD	B, A
+	; LD	A, #0x03
+	; LD	C, A
+	; LD	A, #0x3D
+	; LD	E, A
+	;
+	; PUSH BC
+	; PUSH DE
+	; CALL	.init_brick
+	; POP BC
+	; POP DE
+	;
+	CALL	.generate_bricks
 
 
 	LD	A, #0b10000111
@@ -249,4 +249,44 @@ _main::
 	CALL	.mv_sprite
 	RET
 
+
+.generate_bricks:
+	LD	A, #0x00
+	LD	D, A
+
+brick_loop:
+	;;
+	;; Initiera en sten.
+	;;
+	;; C = vilken sprite (ex 0x03)
+	;; B = pos x
+	;; E = pos y
+	;;
+	LD	A, #0x3D
+	ADD	D
+	ADD	D
+	ADD	D
+	ADD	D
+	ADD	D
+	ADD	D
+	ADD	D
+	ADD	D
+	LD	B, A
+	LD	A, #0x03
+	ADD	D
+	LD	C, A
+	LD	A, #0x3D
+	LD	E, A
+
+	PUSH BC
+	PUSH DE
+	CALL	.init_brick
+	POP DE
+	POP BC
+
+	INC	D		;$0471
+	LD	A, D
+	CP	#0x04
+	JP	C, brick_loop
+	RET
 .area	_LIT
