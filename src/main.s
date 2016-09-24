@@ -35,9 +35,11 @@ RIGHT_EDGE = 165
 .pad_position_y:
 	.ds	0x04
 
+
 .area	_CODE
 
 _main::
+
 	DI
 	CALL	.display_off
 	LD	A,  #0b11100100
@@ -52,11 +54,6 @@ _main::
 	CALL	.init_btt
 	CALL	.init_wtt
 
-	LD	BC,  #.tp0
-	LD	HL,  #0x9000-(.endtp0-.tp0)
-	LD	DE,  #.endtp0-.tp0
-	CALL	.copy_vram
-
 	LD	BC,  #.tp1
 	LD	HL,  #0x8000
 	LD	DE,  #.endtp1-.tp1
@@ -64,7 +61,6 @@ _main::
 
 	;; Init sprite
 	XOR	A
-	CALL .init_ball_sprite
 	CALL .init_pad_sprite
 
 	LD	A, #100
@@ -94,11 +90,36 @@ _main::
 	LD	A, #0xFF
 	LD	(.ball_speed_y+1), A
 
+
 	CALL	.init_ball_sprite
+	CALL .init_pad_sprite
 	CALL	.update_ball_sprite_position
 
 
-	LD	A, #0b11100111
+	;;
+	;; Initiera en sten.
+	;;
+	;; C = vilken sprite (ex 0x03)
+	;; B = pos x
+	;; E = pos y
+	;;
+	LD	A, #0x3D
+	LD	B, A
+	LD	A, #0x03
+	LD	C, A
+	LD	A, #0xFF
+	LD	D, A
+	LD	A, #0x3D
+	LD	E, A
+
+	PUSH BC
+	PUSH DE
+	CALL	.init_brick
+	POP BC
+	POP DE
+
+
+	LD	A, #0b10000111
           ; LCDC         = On
           ; WindowBank   = 0x9C00
           ; Window       = On
@@ -138,7 +159,7 @@ _main::
 	RET
 
 ;; Ställ in sprite 0x01 <- 0x03 (spelarens tile)
-;; Flippa 0x03 för att göra 0x02
+;; Flippa tile 0x03 för att göra sprite 0x02
 .init_pad_sprite:
 	LD	C,#0x01		; Sprite 0x01
 	LD	D,#0x00		; Default sprite properties
@@ -179,6 +200,7 @@ _main::
 	LD	A, (.pad_position_y)
 	LD	E, A
 	CALL	.mv_sprite
+
 	RET
 
 .move_pad_left:
@@ -191,6 +213,40 @@ _main::
 	LD	A, (.pad_position_x)
 	INC A
 	LD	(.pad_position_x), A
+	RET
+
+;;
+;; .init_brick (sprite C, posx B, posy E)
+;;
+.init_brick:
+	;0b07 i bgb
+	LDA	HL,2(SP)	; Stackprocedur
+	LD E, (HL)	; Hämta E (pos y) från stacken
+	INC	HL		; D = don't care (skulle senare kunna användas för att bestämma tile)
+	INC	HL
+	LD C, (HL)	; Hämta C (spritenummer)
+	INC	HL
+	LD B, (HL)  	; Hämta B (pos x)
+
+	LD	D,#0x00	; Default sprite properties
+
+	;; Lägg BC och E på stacken så .set_sprite_prop inte sabbar
+	PUSH	BC
+	PUSH	DE
+	CALL	.set_sprite_prop
+	POP	DE
+	POP	BC
+	LD	D, #0x04		; Tile 0x04
+
+	PUSH	BC
+	PUSH	DE
+	CALL	.set_sprite_tile
+	POP	DE
+	POP	BC
+
+	LD	A, B ; D = pos x
+	LD	D, A	; E = pos y
+	CALL	.mv_sprite
 	RET
 
 .area	_LIT
