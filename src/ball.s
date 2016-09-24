@@ -37,9 +37,12 @@
 	RET
 
 .ball_collision:
+
+.edge_collision:
 	LD	A, (.ball_position_y)
 	CP	#BOTTOM_EDGE              ; Om bollen slår i golvet
-	JP	NC, .change_direction_y   ; Studsa
+	JP	NC, .lose_ball   ; DÖ
+	LD	A, (.ball_position_y)
 	CP	#TOP_EDGE                 ; Om bollen slår i taket
 	JP	C, .change_direction_y
 
@@ -49,6 +52,35 @@
 	CP	#LEFT_EDGE
 	JP	C, .change_direction_x
 
+.pad_collision:
+	LD	A, (.pad_position_y)
+	ADD	A, #8
+	LD	B, A
+	LD	A, (.ball_position_y)
+	CP	B
+	JP	C, .pad_collision_ret
+
+	LD	A, (.pad_position_x)
+	LD	B, A
+	LD	A, (.ball_position_x)
+	CP	B
+	JP	Z, .change_direction_x
+	JP	C, .pad_collision_ret
+	SUB A, #16
+	CP	B
+	JP	Z, .change_direction_x
+	JP	NC, .pad_collision_ret
+
+	JP .change_direction_y
+
+.pad_collision_ret:
+	RET
+
+.lose_ball:
+	LD	A, #STARTX
+	LD	(.ball_position_x), A
+	LD	A, #STARTY
+	LD	(.ball_position_y), A
 	RET
 
 .change_direction_x:
